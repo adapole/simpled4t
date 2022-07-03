@@ -347,7 +347,10 @@ const Main = (props: Props) => {
 
 		const s = await myalgoconnect.signTransaction(unsigned);
 		for (let x = 0; x < signedTxns.length; x++) {
-			if (typeof signedTxns[x] === 'number') signedTxns[x] = s[signedTxns[x]];
+			if (typeof signedTxns[x] === 'number') {
+				// @ts-expect-error: Let's ignore a compile error here
+				signedTxns[x] = s[signedTxns[x]];
+			}
 		}
 
 		return signedTxns;
