@@ -4,7 +4,7 @@ import algosdk, {
 	Transaction,
 	TransactionSigner,
 } from 'algosdk';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import MyAlgoConnect from '@randlabs/myalgo-connect';
 import { toast } from 'react-toastify';
 import {
@@ -32,6 +32,8 @@ import { IAssetData, SignTxnParams } from '../lib/helpers/types';
 import { formatJsonRpcRequest } from '@json-rpc-tools/utils';
 import dynamic from 'next/dynamic';
 import Faucets from './Faucets';
+import AsyncSelect from 'react-select/async';
+import makeAnimated from 'react-select/animated';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,
@@ -40,6 +42,10 @@ const ipfs = create({
 
 interface Props {
 	returnwallet: (data: any) => Promise<void>;
+}
+export interface iOption {
+	label: string;
+	value: string;
 }
 export interface SignedTxn {
 	txID: string;
@@ -72,19 +78,29 @@ const Main = (props: Props) => {
 	const [openPage, setOpenPage] = useState(1);
 
 	const myAlgoConnect = new MyAlgoConnect({ disableLedgerNano: false });
-	const [validRound, setValidRound] = useState(2);
+	const [validRound, setValidRound] = useState(22835051);
 	const [fileUrl, updateFileUrl] = useState(``);
 	const [hashIpfs, setHashIpfs] = useState('');
-	useEffect(() => {
-		console.log('render for ipfsPath');
+	const [selectedAssets, setSelectedAssets] = useState<iOption[]>([
+		{
+			value: '97931298',
+			label: `NENE: 97931298`,
+		},
+	]);
+	const [userInput, setUserInput] = useState<number>(0);
+	const [expDay, setExpDay] = useState<number>(0);
+	const searchInputRef: any = useRef(null);
+	const expiringdayRef: any = useRef(null);
+	/* useEffect(() => {
+		console.log('render for selectedAssets');
 
-		/* return () => {
+		return () => {
 			console.log('return from change, CleanUP');
-		}; */
-	}, [hashIpfs]);
-	let rounds = 10;
-	const amount = 100;
-	const newAmount = amount * 1000000;
+		};
+	}, [selectedAssets]); */
+	//let rounds = 10;
+	//const amount = 100;
+	//const AllowedAmount = amount * 1000000;
 
 	const camtCheck = async () => {
 		const accountInfoResponse = await testNetClientindexer
@@ -220,6 +236,8 @@ const Main = (props: Props) => {
 	};
 	const logic = async () => {
 		console.log('Stake function run!');
+		const AllowedAmount: number = userInput * 1000000; //convert()
+		let rounds: number = expDay;
 		//const lsig = await tealProgramMake(amount);
 		let params = await testNetClientalgod.getTransactionParams().do();
 		let data =
@@ -229,12 +247,13 @@ const Main = (props: Props) => {
 		console.log('Result = ' + results.result);
 		let program = new Uint8Array(Buffer.from(results.result, 'base64'));
 
-		if (rounds == 0) rounds = 10;
+		if (rounds === 0) rounds = 10;
 		let dayToRound = rounds * 17280;
 		let exround = params.firstRound + dayToRound;
 		setValidRound(exround);
-		console.log(newAmount);
-		let args = getUint8Args(Number(newAmount), exround);
+
+		console.log(AllowedAmount);
+		let args = getUint8Args(Number(AllowedAmount), exround);
 		let lsiga = new algosdk.LogicSigAccount(program, args);
 
 		const lsig = algosdk.makeLogicSig(program, args);
@@ -256,10 +275,6 @@ const Main = (props: Props) => {
 		console.log(decode(lsa));
 		console.log('LSA');
 		console.log(decode(encoded));
-		/* const objL = decode(lsiga.toByte());
-		console.log(objL);
-		console.log('Decoding encoded');
-		console.log(decode(encoded)); */
 
 		try {
 			toast.info(`Uploading to IPFS...`, {
@@ -498,10 +513,14 @@ const Main = (props: Props) => {
 	const stake = async () => {
 		try {
 			const suggested = await apiGetTxnParams(ChainType.TestNet);
+			const AllowedAmount: number = userInput * 1000000; //convert()
+
+			//await logic(AllowedAmount, rounds, suggested);
 
 			const ipfsLsaHash = Uint8Array.from(
 				Buffer.from(hashIpfs) //'QmNTkHdGbUxnLSBf1jjmAHBQPjMFAvpJmEh8DzU3XYCqbG'
 			);
+			console.log(ipfsLsaHash);
 			const contract = await getContractAPI();
 
 			const getMethod = await getMethodByName('earn');
@@ -533,6 +552,19 @@ const Main = (props: Props) => {
 			};
 
 			const optin = await checkAssetOptin(DUSD, address);
+			let AllowedAssets: number[] = [];
+			setSelectedAssets((oldArray) => [
+				...oldArray,
+				{ value: '97931298', label: 'NENE' },
+			]);
+			//console.log(selectedAssets);
+			selectedAssets.forEach((a) => {
+				AllowedAssets.push(Number(a.value));
+			});
+			if (AllowedAssets.length === 0) AllowedAssets = [NFTColl];
+			const AllowedAssetsFiltered = AllowedAssets.filter(
+				(val, i) => AllowedAssets.indexOf(val) === i
+			);
 
 			if (optin == false || optin[0]['deleted']) {
 				console.log('Not opted in');
@@ -540,7 +572,12 @@ const Main = (props: Props) => {
 				comp.addTransaction(tws);
 				comp.addMethodCall({
 					method: getMethod,
-					methodArgs: [[NFTColl], newAmount, validRound, ipfsLsaHash],
+					methodArgs: [
+						AllowedAssetsFiltered,
+						AllowedAmount,
+						validRound,
+						ipfsLsaHash,
+					],
 					...commonParams,
 				});
 				// This is not necessary to call but it is helpful for debugging
@@ -588,9 +625,15 @@ const Main = (props: Props) => {
 				return; //await submitTransaction(signedGroup);
 			} else if ((optin.length = 1 && !optin[0]['deleted'])) {
 				console.log('Already opted in');
+
 				comp.addMethodCall({
 					method: getMethod,
-					methodArgs: [[NFTColl], newAmount, validRound, ipfsLsaHash],
+					methodArgs: [
+						AllowedAssetsFiltered,
+						AllowedAmount,
+						validRound,
+						ipfsLsaHash,
+					],
 					...commonParams,
 				});
 				// This is not necessary to call but it is helpful for debugging
@@ -685,7 +728,7 @@ const Main = (props: Props) => {
 		// since they happen to be the same
 		const commonParams = {
 			appID: contract.networks['default'].appID,
-			sender: acct.addr,
+			sender: address,
 			suggestedParams: suggested,
 			onComplete: OnApplicationComplete.NoOpOC,
 			signer, //: algosdk.makeBasicAccountTransactionSigner(acct),
@@ -719,7 +762,7 @@ const Main = (props: Props) => {
 		suggestedParams.fee = 0;
 		const ptxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
 			from: addressLogicSig, //Lender address
-			to: acct.addr, //Borrower address
+			to: address, //Borrower address
 			amount: amountborrowing,
 			assetIndex: USDC,
 			suggestedParams,
@@ -1092,6 +1135,69 @@ const Main = (props: Props) => {
 			}
 		}
 	};
+	async function atomic(name: string) {
+		const assetsInfo = await testNetClientindexer
+			.searchForAssets()
+			.unit(name)
+			.do();
+		//console.log(assetsInfo);
+		const arrayAssets: [] = assetsInfo.assets;
+		try {
+			const filtered = arrayAssets.filter(
+				(assets: any) => assets.deleted === false //&&assets.params.manager ==='EADMVBZHVH3KZE4MOGD67PSFPQODIMZRQ43CQPGVFFKS6EEJUUMHN4NKVU'
+			);
+			//search
+			//console.log(filtered);
+			let newArray: any = [];
+			filtered.forEach((asset: any) => {
+				newArray.push({ value: asset.index, label: asset.params['unit-name'] });
+			});
+			//console.log(filtered);
+			//console.log(newArray);
+			return newArray;
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	const loadOptions = (
+		inputValue: string,
+		callback: (options: iOption[]) => void
+	) => {
+		setTimeout(async () => {
+			try {
+				// Fetch data
+				const data = await atomic(inputValue);
+				if (data !== undefined) {
+					console.log(data);
+
+					// Extract data and populate AsyncSelect
+					const tempArray: iOption[] = [];
+
+					data.forEach((element: any) => {
+						tempArray.push({
+							label: `${element.label}: ${element.value}`,
+							value: `${element.value}`,
+						});
+					});
+					callback(
+						tempArray.filter((i) =>
+							i.label.toLowerCase().includes(inputValue.toLowerCase())
+						)
+					);
+				}
+			} catch (error) {
+				console.log(error);
+				callback([]);
+			}
+		});
+	};
+	const handleInputChange = (newValue: string) => {
+		const inputValue = newValue.replace(/\W/g, '');
+		//setInputValue(inputValue);
+		return inputValue;
+	};
+	const [lvrNow, setLvrNow] = useState(0);
 
 	return (
 		<div className='w-full h-screen text-center'>
@@ -1104,7 +1210,7 @@ const Main = (props: Props) => {
 						{!address ? (
 							<div className='text-center pb-14 md:pb-16'>
 								<p className='uppercase text-sm tracking-widest text-gray-600'>
-									A simple borrow, earn demo with myAlgo wallet for Logicsig
+									A simple earn demo with myAlgo wallet for Logicsig
 								</p>
 								<h1 className='mt-2 flex flex-col items-center justify-center w-screen '>
 									<div className='bg-gradient-to-r from-pink-600 to-orange-600 text-lg rounded-md w-48'>
@@ -1136,8 +1242,8 @@ const Main = (props: Props) => {
 										</div>
 										<div className='flex flex-col items-center justify-center w-screen flex-1 px-20 text-center'>
 											<div className='bg-white rounded-2xl shadow-2xl flex w-4/5 md:w-2/3 max-w-4xl'>
-												{/* Borrow section */}
-												<div className='w-1/2 md:w-3/5 p-5'>
+												{/* Earn section */}
+												<div className='w-1/2 md:w-4/5 p-5'>
 													<div
 														className='text-left font-bold'
 														onClick={async (e) => {
@@ -1155,124 +1261,174 @@ const Main = (props: Props) => {
 														</span>
 													</div>
 													<p className='leading-none text-3xl font-bold text-orange-600 mb-2'>
-														Borrow Tab
+														Earn
 													</p>
 													<div className='border-2 w-10 border-orange-600 inline-block mb-2'></div>
+													<AsyncSelect
+														className='mb-3'
+														placeholder='Select NFT/Assets'
+														onInputChange={handleInputChange}
+														onChange={async (option) => {
+															setSelectedAssets(option as iOption[]);
+															//console.log(selectedAssets);
+														}}
+														isMulti
+														cacheOptions
+														defaultOptions
+														loadOptions={loadOptions}
+													/>
 													<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
 														<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
 															<span
 																className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-																onClick={(e) => {
+																onClick={async (e) => {
 																	e.preventDefault();
-																	//maximumAmount(NFTSelected, 0, newAmount);
-																}}
-															>
-																MAX
-															</span>
-															<span className='pl-2 text-gray-500'>
-																{/* <AsyncSelect
-											cacheOptions
-											loadOptions={loadOptions}
-											placeholder='Select NFT/Assets'
-											defaultOptions
-											onInputChange={handleInputChange}
-											onChange={async (option) => {
-												setSelectedNFT(option as iOption);
-											}}
-										/> */}
-																asset
-															</span>
-														</div>
-														<input
-															//ref={searchInputRef}
-															type='number'
-															className='flex-grow focus:outline-none bg-[#FAFAFA]'
-															placeholder='Collateral amount (NFT)'
-															//value={userInput}
-															//onChange={(e) => setUserInput(Number(e.target.value))}
-														/>
-													</form>
-													<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-														<p className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-															<span
-																className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
-																onClick={(e) => {
-																	e.preventDefault();
-																	//maximumAmount(NFTSelected, 0, newAmount);
+																	if (searchInputRef.current !== null)
+																		searchInputRef.current.focus();
+																	const Myassets = await apiGetAccountAssets(
+																		chain,
+																		address
+																	);
+																	const USDCtoken = Myassets.find(
+																		(asset: IAssetData) =>
+																			asset && asset.id === USDC
+																	) || {
+																		id: USDC,
+																		amount: BigInt(0),
+																		creator: '',
+																		frozen: false,
+																		decimals: 6,
+																		name: 'usdc',
+																		unitName: 'USDC',
+																	};
+																	setUserInput(
+																		Number(
+																			formatBigNumWithDecimals(
+																				BigInt(USDCtoken.amount),
+																				USDCtoken.decimals
+																			)
+																		)
+																	);
 																}}
 															>
 																MAX
 															</span>
 															<span className='pl-2 text-gray-500'>USDC</span>
-														</p>
+														</div>
+
 														<input
+															ref={searchInputRef}
 															type='number'
-															placeholder='Loan amount (USDC)'
 															className='flex-grow focus:outline-none bg-[#FAFAFA]'
-															//value={borrowing}
-															//onChange={(e) => {
-															//	setSwitcher(1);
-															//	setBorrowing(Number(e.target.value));
-															//}}
+															placeholder='Allowed amount'
+															value={userInput}
+															onChange={(e) =>
+																setUserInput(Number(e.target.value))
+															}
 														/>
 													</form>
-													<button
-														onClick={async (e) => {
-															e.preventDefault();
-															try {
-																await mborrow();
-															} catch (error) {}
-														}}
-														className='border-gray-400 border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm font-semibold hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md hover:bg-gray-400 hover:text-white'
-													>
-														Borrow
-													</button>
-												</div>
-												{/* Earn section */}
-												<div className='w-1/2 md:w-2/5 bg-orange-600 items-center rounded-tr-2xl rounded-br-2xl py-10 px-12 text-white'>
-													<p className='text-gray-100 leading-none text-3xl font-bold'>
-														Earn
-													</p>
-													<div className='border-2 w-10 border-white inline-block mb-2'></div>
-													<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
-														<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
-															<span
-																className='pr-2 text-indigo-900 cursor-pointer hover:text-pink-200 transition duration-200'
-																onClick={(e) => {
-																	e.preventDefault();
-																	//maximumAmount(NFTSelected, 0, newAmount);
-																}}
-															>
-																MAX
-															</span>
-															<span className='pl-2 text-gray-100'>USDC</span>
-														</div>
-													</form>
-
 													<form className='flex w-full mt-5 hover:shadow-lg focus-within:shadow-lg max-w-md rounded-full border border-gray-200 px-5 py-3 items-center sm:max-w-xl lg:max-w-2xl'>
 														<div className='relative px-7 py-2 rounded-md leading-none flex items-center divide-x divide-gray-500'>
 															<span
 																className='pr-2 text-indigo-400 cursor-pointer hover:text-pink-600 transition duration-200'
 																onClick={(e) => {
 																	e.preventDefault();
-																	//maximumAmount(NFTSelected, 0, newAmount);
+																	if (expiringdayRef.current !== null)
+																		expiringdayRef.current.focus();
+																	setExpDay(10);
+																	//expiringdayRef.current.value = 10;
 																}}
 															>
 																Expire Day
 															</span>
 														</div>
 														<input
-															//ref={searchInputRef}
+															ref={expiringdayRef}
 															type='number'
 															className='flex-grow focus:outline-none'
 															placeholder='10 days'
-															//value={userInput}
-															//onChange={(e) => setUserInput(Number(e.target.value))}
+															value={expDay}
+															onChange={(e) =>
+																setExpDay(Number(e.target.value))
+															}
 														/>
 													</form>
-													<button className='border-white border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm font-semibold hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md hover:bg-white hover:text-orange-600'>
-														Stake
+													{hashIpfs ? (
+														<button
+															onClick={async (e) => {
+																e.preventDefault();
+																try {
+																	await stake();
+																} catch (error) {}
+															}}
+															className='bg-gradient-to-r from-gray-100 to-red-300 border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm text-gray-800 hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md'
+														>
+															Stake - Promise
+														</button>
+													) : (
+														<div className='group'>
+															<span
+																hidden={!wc}
+																className='absolute w-auto p-2 m-2 min-w-max left-48 rounded-md text-white bg-gray-900 text-xs font-bold transition-all duration-100 scale-0 origin-left group-hover:scale-100'
+															>
+																You should use myAlgoWallet for this!
+															</span>
+															<button
+																onClick={async (e) => {
+																	e.preventDefault();
+																	try {
+																		if (!wc) await logic();
+																	} catch (error) {}
+																}}
+																disabled={!wc}
+																className={
+																	!wc
+																		? `border-gray-400 border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm font-semibold hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md hover:bg-gray-400 hover:text-white`
+																		: `hover:bg-gray-400 text-gray-400`
+																}
+															>
+																Sign
+															</button>
+														</div>
+													)}
+												</div>
+												{/* Mini dashboard */}
+												<div className='w-1/2 md:w-2/5 bg-orange-600 items-center rounded-tr-2xl rounded-br-2xl py-10 px-12 text-white'>
+													<p className='text-gray-100 leading-none text-3xl font-bold'>
+														Your promise
+													</p>
+													{/* <div className='border-2 w-10 border-white inline-block mb-2'></div> */}
+													<button
+														onClick={async (e) => {
+															e.preventDefault();
+															await checkAllowedAmount();
+															const firstRound = await testNetClientalgod
+																.getTransactionParams()
+																.do()
+																.then((res) => res.firstRound);
+
+															setLvrNow((displayLend.lvr - firstRound) / 17280);
+														}}
+														className='border-white border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm font-semibold hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md hover:bg-white hover:text-orange-600'
+													>
+														{lvrNow < 0 ? <>Exp-Day</> : <>View</>}
 													</button>
+													{displayLend.lvr > 0 ? (
+														<div className='mt-4'>
+															<>
+																Assets:{' '}
+																{displayLend.xids.map((value) => value + ',')}
+															</>
+															<div>Amount: {displayLend.aamt.toFixed(2)}</div>
+															{lvrNow > 0 ? (
+																<div>Expiring in: {lvrNow.toFixed(2)} day</div>
+															) : (
+																<></>
+															)}
+														</div>
+													) : (
+														<></>
+													)}
 												</div>
 											</div>
 										</div>
