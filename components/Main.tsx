@@ -1377,10 +1377,9 @@ const Main = (props: Props) => {
 																onClick={async (e) => {
 																	e.preventDefault();
 																	try {
-																		if (!wc) await logic();
+																		await logic();
 																	} catch (error) {}
 																}}
-																disabled={!wc}
 																className={
 																	!wc
 																		? `border-gray-400 border-2 p-3 mt-2 rounded-md ring-gray-200 text-sm font-semibold hover:ring-1 focus:outline-none active:ring-gray-300 hover:shadow-md hover:bg-gray-400 hover:text-white`
