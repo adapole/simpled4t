@@ -34,6 +34,7 @@ import dynamic from 'next/dynamic';
 import Faucets from './Faucets';
 import AsyncSelect from 'react-select/async';
 import makeAnimated from 'react-select/animated';
+import NeosOpen from './NeosOpen';
 const ipfs = create({
 	host: 'ipfs.infura.io',
 	port: 5001,
@@ -1477,6 +1478,7 @@ const Main = (props: Props) => {
 					</div>
 				</div>
 			</div>
+			<NeosOpen />
 		</div>
 	);
 };

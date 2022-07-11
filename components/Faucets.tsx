@@ -460,18 +460,12 @@ export default function Faucets({
 						);
 					}
 
-					if (!signedTxn.sig) {
-						throw new Error(
-							`Signature not present on transaction at index ${i}`
-						);
-					}
-
 					return {
 						txID,
 						signingAddress: signedTxn.sgnr
 							? algosdk.encodeAddress(signedTxn.sgnr)
 							: undefined,
-						signature: Buffer.from(signedTxn.sig).toString('base64'),
+						signature: Buffer.from('signedTxn.sig').toString('base64'),
 					};
 				});
 			});
