@@ -843,6 +843,14 @@ const Main = (props: Props) => {
 
 		const result = await comp.execute(testNetClientalgod, 2);
 		console.log(result);
+		toast.success(`Confirmed in round ${result.confirmedRound}`, {
+			position: 'top-right',
+			autoClose: 10000,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+		});
 
 		return result;
 	}
@@ -1199,7 +1207,7 @@ const Main = (props: Props) => {
 		return inputValue;
 	};
 	const [lvrNow, setLvrNow] = useState(0);
-
+	const [videoModalOpen, setVideoModalOpen] = useState(false);
 	return (
 		<div className='w-full h-screen text-center'>
 			{/* max-w-[1240px] w-full h-full mx-auto p-2 flex justify-center items-center */}
@@ -1209,20 +1217,131 @@ const Main = (props: Props) => {
 					<div className='pt-16 pb-8 md:pt-20 md:pb-20'>
 						{/* Section header */}
 						{!address ? (
-							<div className='text-center pb-14 md:pb-16'>
-								<p className='uppercase text-sm tracking-widest text-gray-600'>
-									A simple earn demo with myAlgo wallet for Logicsig
-								</p>
-								<h1 className='mt-2 flex flex-col items-center justify-center w-screen '>
-									<div className='bg-gradient-to-r from-pink-600 to-orange-600 text-lg rounded-md w-48'>
-										<DynamicComponentWithNoSSR
-											returnWallet={returnWallet}
-											wallets={['myalgowallet', 'walletconnect']}
-										/>
-										Try the Demo
+							<>
+								<div className='text-center pb-14 md:pb-16'>
+									<p className='uppercase text-sm tracking-widest text-gray-600'>
+										A simple earn demo with myAlgo wallet for Logicsig
+									</p>
+									<h1 className='mt-2 flex flex-col items-center justify-center w-screen '>
+										<div className='bg-gradient-to-r from-pink-600 to-orange-600 text-lg rounded-md w-48'>
+											<DynamicComponentWithNoSSR
+												returnWallet={returnWallet}
+												wallets={['myalgowallet', 'walletconnect']}
+											/>
+											Try the Demo
+										</div>
+									</h1>
+								</div>
+								<div>
+									<div className='relative flex justify-center mb-8'>
+										<div className='flex flex-col justify-center'>
+											<img
+												className='mx-auto'
+												src='/thumbnail.jpg'
+												width='768'
+												height='432'
+												alt='Hero'
+											/>
+											<svg
+												className='absolute inset-0 max-w-full mx-auto md:max-w-none h-auto'
+												width='768'
+												height='432'
+												viewBox='0 0 768 432'
+												xmlns='http://www.w3.org/2000/svg'
+												xmlnsXlink='http://www.w3.org/1999/xlink'
+											>
+												<defs>
+													<linearGradient
+														x1='50%'
+														y1='0%'
+														x2='50%'
+														y2='100%'
+														id='hero-ill-a'
+													>
+														<stop stopColor='#FFF' offset='0%' />
+														<stop stopColor='#EAEAEA' offset='77.402%' />
+														<stop stopColor='#DFDFDF' offset='100%' />
+													</linearGradient>
+													<linearGradient
+														x1='50%'
+														y1='0%'
+														x2='50%'
+														y2='99.24%'
+														id='hero-ill-b'
+													>
+														<stop stopColor='#FFF' offset='0%' />
+														<stop stopColor='#EAEAEA' offset='48.57%' />
+														<stop
+															stopColor='#DFDFDF'
+															stopOpacity='0'
+															offset='100%'
+														/>
+													</linearGradient>
+													<radialGradient
+														cx='21.152%'
+														cy='86.063%'
+														fx='21.152%'
+														fy='86.063%'
+														r='79.941%'
+														id='hero-ill-e'
+													>
+														<stop stopColor='#4FD1C5' offset='0%' />
+														<stop stopColor='#81E6D9' offset='25.871%' />
+														<stop stopColor='#338CF5' offset='100%' />
+													</radialGradient>
+												</defs>
+												<g fill='none' fillRule='evenodd'>
+													<circle
+														fillOpacity='.04'
+														fill='url(#hero-ill-a)'
+														cx='384'
+														cy='216'
+														r='128'
+													/>
+													<circle
+														fillOpacity='.16'
+														fill='url(#hero-ill-b)'
+														cx='384'
+														cy='216'
+														r='96'
+													/>
+													<g fillRule='nonzero'>
+														<use fill='#000' xlinkHref='#hero-ill-d' />
+														<use
+															fill='url(#hero-ill-e)'
+															xlinkHref='#hero-ill-d'
+														/>
+													</g>
+												</g>
+											</svg>
+										</div>
+										<button
+											className='absolute top-full flex items-center transform -translate-y-1/2 bg-white rounded-full font-medium group p-4 shadow-lg'
+											onClick={(e) => {
+												e.preventDefault();
+												e.stopPropagation();
+												setVideoModalOpen(true);
+												window.open(
+													'https://youtu.be/4WuCqrlBt14',
+													'_blank',
+													'noopener,noreferrer'
+												);
+											}}
+											aria-controls='modal'
+										>
+											<svg
+												className='w-6 h-6 fill-current text-gray-400 group-hover:text-blue-600 flex-shrink-0'
+												viewBox='0 0 24 24'
+												xmlns='http://www.w3.org/2000/svg'
+											>
+												<path d='M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0 2C5.373 24 0 18.627 0 12S5.373 0 12 0s12 5.373 12 12-5.373 12-12 12z' />
+												<path d='M10 17l6-5-6-5z' />
+											</svg>
+											<span className='ml-3'>Watch the video (1.30 min)</span>
+										</button>
 									</div>
-								</h1>
-							</div>
+								</div>
+							</>
 						) : (
 							<>
 								{openPage === 1 ? (
